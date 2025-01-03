@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:uts_bintang/model/recipe.dart'; // Sesuaikan dengan path model Recipe Anda
 
 class RecipeDetailPage extends StatelessWidget {
-  final Recipe recipe;
+  final RecipeModel recipe;
 
   const RecipeDetailPage({super.key, required this.recipe});
 
@@ -10,7 +10,7 @@ class RecipeDetailPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(recipe.title),
+        title: Text(recipe.title ?? 'Recipe Detail'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -20,7 +20,7 @@ class RecipeDetailPage extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: Image.network(
-                recipe.imageUrl,
+                recipe.gambar ?? '',
                 fit: BoxFit.cover,
                 height: 250,
                 width: double.infinity,
@@ -28,7 +28,7 @@ class RecipeDetailPage extends StatelessWidget {
             ),
             const SizedBox(height: 16.0),
             Text(
-              recipe.title,
+              recipe.title ?? '',
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -36,7 +36,7 @@ class RecipeDetailPage extends StatelessWidget {
             ),
             const SizedBox(height: 8.0),
             Text(
-              recipe.description,
+              recipe.description ?? '',
               style: const TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 16.0),

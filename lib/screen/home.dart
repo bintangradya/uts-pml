@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:uts_bintang/model/recipe.dart';
 import 'package:uts_bintang/model/user.dart';
+import 'package:uts_bintang/screen/add_resep.dart';
 import 'package:uts_bintang/screen/detail_resep.dart';
 import 'package:uts_bintang/service/appwrite.dart';
-import 'package:uts_bintang/service/dummy_recipe.dart';
-// Sesuaikan dengan path UserModel Anda
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -14,35 +13,59 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final AppwriteService _appwriteService = AppwriteService();
+  final AppwriteService _recipeService = AppwriteService();
+
   UserModel? _user;
+  List<RecipeModel> _recipes = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _getUser();
+    _initializePage();
+  }
+
+  Future<void> _initializePage() async {
+    await _getUser();
+    await _fetchRecipes();
   }
 
   Future<void> _getUser() async {
     try {
-      UserModel? user = await _appwriteService.getCurrentUser();
+      // Ambil data pengguna, sesuaikan dengan implementasi Anda
+      UserModel? user = await _recipeService.getCurrentUser();
       setState(() {
         _user = user;
       });
     } catch (e) {
       print('Error fetching user: $e');
-      // Tangani error sesuai kebutuhan, misalnya tampilkan Snackbar
+    }
+  }
+
+  Future<void> _fetchRecipes() async {
+    try {
+      List<RecipeModel> recipes = await _recipeService.fetchRecipes();
+      setState(() {
+        _recipes = recipes;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error fetching recipes: $e');
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
   Future<void> _logout() async {
-    await _appwriteService.logout(context);
-    // Ganti dengan rute login Anda
+    await _recipeService.logout(context);
+    // Redirect ke halaman login jika perlu
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.teal[400],
       appBar: AppBar(
         title: const Text('Home Page'),
         centerTitle: true,
@@ -54,14 +77,8 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
       body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.teal[200]!, Colors.teal[400]!],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: _user == null
+        decoration: const BoxDecoration(),
+        child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : SingleChildScrollView(
                 padding: const EdgeInsets.all(16.0),
@@ -70,79 +87,75 @@ class _HomePageState extends State<HomePage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Card(
-                        elevation: 8,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(20.0),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              // Gambar di sebelah kiri
-                              const CircleAvatar(
-                                radius: 40,
-                                backgroundImage: NetworkImage(
-                                  'https://cdn-icons-png.flaticon.com/512/6858/6858504.png',
-                                ),
+                      _user != null
+                          ? Card(
+                              elevation: 8,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
                               ),
-                              const SizedBox(
-                                  width: 20.0), // Jarak antara gambar dan teks
-                              // Teks di sebelah kanan
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                              child: Padding(
+                                padding: const EdgeInsets.all(20.0),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Text(
-                                      'Welcome, ${_user!.name}!',
-                                      style: TextStyle(
-                                        fontSize: 25,
-                                        fontWeight: FontWeight.bold,
-                                        overflow: TextOverflow.ellipsis,
-                                        color: Colors.teal[800],
+                                    const CircleAvatar(
+                                      radius: 40,
+                                      backgroundImage: NetworkImage(
+                                        'https://cdn-icons-png.flaticon.com/512/6858/6858504.png',
                                       ),
                                     ),
-                                    Text(
-                                      'Email: ${_user!.email}',
-                                      style: const TextStyle(fontSize: 18),
+                                    const SizedBox(width: 20.0),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Welcome, ${_user!.name}!',
+                                            style: TextStyle(
+                                              fontSize: 25,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.teal[800],
+                                            ),
+                                          ),
+                                          Text(
+                                            'Email: ${_user!.email}',
+                                            style: const TextStyle(
+                                              fontSize: 18,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(
-                        height: 15.0,
-                      ),
+                            )
+                          : const SizedBox(),
+                      const SizedBox(height: 15.0),
                       const Text(
-                        'List of Recipes :',
+                        'List of Recipes:',
                         style: TextStyle(
                           fontSize: 18,
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(
-                        height: 15.0,
-                      ),
+                      const SizedBox(height: 15.0),
                       GridView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         gridDelegate:
                             const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2, // Jumlah kolom
+                          crossAxisCount: 2,
                           crossAxisSpacing: 10.0,
                           mainAxisSpacing: 10.0,
-                          childAspectRatio:
-                              0.75, // Rasio lebar dan tinggi kartu
+                          childAspectRatio: 0.75,
                         ),
-                        itemCount: dummyRecipes.length,
+                        itemCount: _recipes.length,
                         itemBuilder: (context, index) {
-                          final recipe = dummyRecipes[index];
+                          final recipe = _recipes[index];
                           return _buildRecipeCard(recipe);
                         },
                       ),
@@ -151,13 +164,23 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const AddRecipePage(),
+            ),
+          );
+        },
+        child: const Icon(Icons.add),
+      ),
     );
   }
 
-  Widget _buildRecipeCard(Recipe recipe) {
-    return GestureDetector(
+  Widget _buildRecipeCard(RecipeModel recipe) {
+    return InkWell(
       onTap: () {
-        // Navigasi ke halaman detail
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -170,44 +193,110 @@ class _HomePageState extends State<HomePage> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
           children: [
-            ClipRRect(
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(12)),
-              child: Image.network(
-                recipe.imageUrl,
-                fit: BoxFit.cover,
-                height: 120,
-                width: double.infinity,
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text(
-                recipe.title,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ClipRRect(
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(12)),
+                  child: Image.network(
+                    recipe.gambar ?? '',
+                    fit: BoxFit.cover,
+                    height: 120,
+                    width: double.infinity,
+                    errorBuilder: (context, error, stackTrace) => const Icon(
+                      Icons.broken_image,
+                      size: 120,
+                      color: Colors.grey,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: Text(
-                recipe.description,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        recipe.title ?? '',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        recipe.description ?? '',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+              ],
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit, color: Colors.blue),
+                    onPressed: () {
+                      // Navigasi ke halaman edit
+                      Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const HomePage()),
+                          (route) => false);
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () => _showDeleteConfirmationDialog(recipe),
+                  ),
+                ],
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  void _showDeleteConfirmationDialog(RecipeModel recipe) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Delete Recipe'),
+          content: const Text('Are you sure you want to delete this recipe?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                AppwriteService().deleteRecipe(recipe.id!);
+                Navigator.pop(context); // Tutup dialog
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                AppwriteService().deleteRecipe(recipe.id!);
+                Navigator.pushReplacement(context,
+                    MaterialPageRoute(builder: (context) => const HomePage()));
+              },
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:appwrite/appwrite.dart';
 import 'package:flutter/material.dart';
+import 'package:uts_bintang/model/recipe.dart';
 import 'package:uts_bintang/model/user.dart';
 import 'package:uts_bintang/screen/home.dart';
 import 'package:uts_bintang/screen/login.dart';
@@ -8,6 +9,10 @@ class AppwriteService {
   Client client = Client();
   late Account account;
   late Databases databases;
+  late Storage storage;
+    final String databaseId = 'recipeId';
+  final String collectionId = 'recipeId';
+  final String bucketId = 'recipeId';
 
   AppwriteService() {
     client
@@ -15,9 +20,9 @@ class AppwriteService {
           'https://cloud.appwrite.io/v1') // Ganti dengan endpoint Appwrite Anda
       ..setProject(
           "671db5840036fb0d033a"); // Ganti dengan project ID Appwrite Anda
-
-    account = Account(client);
-    databases = Databases(client);
+  account = Account(client);
+     databases = Databases(client);
+    storage = Storage(client);
   }
 
   // Fungsi untuk mendaftarkan pengguna baru
@@ -79,19 +84,6 @@ class AppwriteService {
 
 ////////////////////// COMING SOON ////////////////////////////
 
-  // Fungsi untuk membuat dokumen pengguna di database
-  Future<void> createUserDocument(String userId, UserModel user) async {
-    try {
-      await databases.createDocument(
-        databaseId: 'YOUR_DATABASE_ID',
-        collectionId: 'YOUR_COLLECTION_ID',
-        documentId: userId,
-        data: user.toMap(),
-      );
-    } catch (e) {
-      throw Exception('Terjadi kesalahan saat membuat dokumen pengguna');
-    }
-  }
 
   // Mendapatkan detail pengguna saat ini
   Future<UserModel?> getCurrentUser() async {
@@ -107,17 +99,135 @@ class AppwriteService {
     }
   }
 
-  // Mengambil dokumen pengguna dari database
-  Future<UserModel?> getUserDocument(String userId) async {
+  // Fetch Recipes
+  Future<List<RecipeModel>> fetchRecipes() async {
     try {
-      final userDocument = await databases.getDocument(
-        databaseId: 'YOUR_DATABASE_ID',
-        collectionId: 'YOUR_COLLECTION_ID',
-        documentId: userId,
+      final response = await databases.listDocuments(
+        databaseId: databaseId,
+        collectionId: collectionId,
+        queries: [
+          Query.orderDesc('\$createdAt'),
+        ],
       );
-      return UserModel.fromMap(userDocument.data);
+      return response.documents
+          .map((doc) => RecipeModel.fromMap(doc.data))
+          .toList();
+    } on AppwriteException catch (e) {
+      print("Error fetching recipes: ${e.message}");
+      return [];
     } catch (e) {
-      throw Exception('Gagal mengambil dokumen pengguna');
+      print("Unexpected error: $e");
+      return [];
+    }
+  }
+
+  // Add a new Recipe
+  Future<void> createRecipe(String title, String description,
+      {String? imagePath}) async {
+    try {
+      String? imageUrl;
+      String? imageId;
+
+      if (imagePath != null) {
+        final responseImg = await storage.createFile(
+          bucketId: bucketId,
+          fileId: ID.unique(),
+          file: InputFile.fromPath(
+            path: imagePath,
+            filename: imagePath.split('/').last,
+          ),
+        );
+        imageUrl =
+            'https://cloud.appwrite.io/v1/storage/buckets/${responseImg.bucketId}/files/${responseImg.$id}/view?project=671db5840036fb0d033a&mode=admin';
+        imageId = responseImg.$id;
+      }
+
+      Map<String, dynamic> data = {
+        'title': title,
+        'description': description,
+      };
+
+      if (imageUrl != null) {
+        data['gambar'] = imageUrl;
+        data['gambarId'] = imageId;
+      }
+
+      await databases.createDocument(
+        databaseId: databaseId,
+        collectionId: collectionId,
+        documentId: ID.unique(),
+        data: data,
+      );
+      print("Recipe created successfully");
+    } on AppwriteException catch (e) {
+      print("Error creating recipe: ${e.message}");
+      throw 'Gagal menambahkan resep';
+    }
+  }
+
+  // Update Recipe
+  Future<void> updateRecipe(String id, String title, String description,
+      {String? imagePath, String? oldImageId}) async {
+    try {
+      String? imageUrl;
+      String? imageId;
+
+      if (imagePath != null) {
+        final responseImg = await storage.createFile(
+          bucketId: bucketId,
+          fileId: ID.unique(),
+          file: InputFile.fromPath(
+            path: imagePath,
+            filename: imagePath.split('/').last,
+          ),
+        );
+        imageUrl =
+            'https://cloud.appwrite.io/v1/storage/buckets/${responseImg.bucketId}/files/${responseImg.$id}/view?project=671db5840036fb0d033a&mode=admin';
+        imageId = responseImg.$id;
+
+        if (oldImageId != null) {
+          await storage.deleteFile(
+            bucketId: bucketId,
+            fileId: oldImageId,
+          );
+        }
+      }
+
+      Map<String, dynamic> data = {
+        'title': title,
+        'description': description,
+      };
+
+      if (imageUrl != null) {
+        data['gambar'] = imageUrl;
+        data['gambarId'] = imageId;
+      }
+
+      await databases.updateDocument(
+        databaseId: databaseId,
+        collectionId: collectionId,
+        documentId: id,
+        data: data,
+      );
+      print("Recipe updated successfully");
+    } on AppwriteException catch (e) {
+      print("Error updating recipe: ${e.message}");
+      throw 'Gagal memperbarui resep';
+    }
+  }
+
+  // Delete Recipe
+  Future<void> deleteRecipe(String id) async {
+    try {
+      await databases.deleteDocument(
+        databaseId: databaseId,
+        collectionId: collectionId,
+        documentId: id,
+      );
+      print("Recipe deleted successfully");
+    } on AppwriteException catch (e) {
+      print("Error deleting recipe: ${e.message}");
+      throw 'Gagal menghapus resep';
     }
   }
 }
