@@ -3,6 +3,7 @@ import 'package:uts_bintang/model/recipe.dart';
 import 'package:uts_bintang/model/user.dart';
 import 'package:uts_bintang/screen/add_resep.dart';
 import 'package:uts_bintang/screen/detail_resep.dart';
+import 'package:uts_bintang/screen/edit_recipe.dart';
 import 'package:uts_bintang/service/appwrite.dart';
 
 class HomePage extends StatefulWidget {
@@ -254,7 +255,8 @@ class _HomePageState extends State<HomePage> {
                       Navigator.pushAndRemoveUntil(
                           context,
                           MaterialPageRoute(
-                              builder: (context) => const HomePage()),
+                              builder: (context) =>
+                                  EditRecipePage(recipe: recipe)),
                           (route) => false);
                     },
                   ),
